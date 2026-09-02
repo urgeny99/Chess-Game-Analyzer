@@ -9,10 +9,21 @@
     </head>
         <body>
             <h1>Chess Game Analyzer</h1>
+            <p><input type="text" id="pgnInput" placeholder="Paste PGN here"></p>
             <button type="button"
-            onclick="document.getElementById('demo').innerHTML = 'Analyzing chess game...';">
-            Click me to analyze chess game.</button>
-            <div id="demo"></div>
-            <input type="text" id="PGNinput" placeholder="Paste PGN here">
+            onclick="analyzeChessGame()">
+            Analyze chess game.</button>
+            <script type="module">
+                import { Chess } from './lib/chess.js';
+                
+                function analyzeChessGame() {
+                    const pgnInput = document.getElementById('pgnInput').value;
+                    const chess = new Chess();
+                    chess.load_pgn(pgnInput);
+                    document.getElementById('chessOutput').innerText = 'Game analyzed';
+                }
+            </script>
+            <p id="chessOutput"></p>
+            
         </body>
     </html>
