@@ -4,7 +4,7 @@ A browser-based tool that analyzes your lichess.org games with a locally-run Sto
 
 ## How it works
 
-1. Enter your lichess.org username
+1. Enter your lichess.org username or paste PGN
 2. The app fetches your games directly from the lichess public API
 3. Each game is stepped through move-by-move using [chess.js](https://github.com/jhlywa/chess.js)
 4. [Stockfish](https://stockfishchess.org/) (compiled to WebAssembly) runs entirely in your browser via a Web Worker to evaluate every position
@@ -42,4 +42,4 @@ Deployed via GitHub Pages — push to `main`, enable Pages in repo settings (sou
 
 ## Status
 
-🚧 Work in progress — built incrementally, starting with game fetching and PGN parsing before adding Stockfish analysis and blunder classification.
+🚧 Work in progress — built incrementally, starting with game logic and simply pasting PGN before adding Stockfish analysis, blunder classification and Lichess fetching.
