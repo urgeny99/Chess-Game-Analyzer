@@ -6,10 +6,10 @@
     </head>
     <body>
         <h1>Chess Game</h1>
-        <p>This is a simple chess game.</p>
+        <p>This is a random chess game.</p>
+        <pre id="output"></pre>
         <script type="module">
-            // Your chess game logic here
-         import { Chess } from 'chess.js'
+         import { Chess } from './lib/chess.js' 
 
          const chess = new Chess()
 
@@ -19,8 +19,14 @@
 
             chess.move(move)
         }
-        console.log(chess.pgn())
+        const result = chess.isCheckmate()
+            ? (chess.turn() === 'w' ? '0-1' : '1-0')
+            : '1/2-1/2'
 
+        document.getElementById('output').textContent =
+            'Game over. Result: ' + result + '\n' +
+            'PGN: ' + chess.pgn()
+        
         </script>
-    </body>
+        </body>
 </html>
