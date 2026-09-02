@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Chess Game</title>
+    </head>
+    <body>
+        <h1>Chess Game</h1>
+        <p>This is a simple chess game.</p>
+        <script type="module">
+            // Your chess game logic here
+         import { Chess } from 'chess.js'
+
+         const chess = new Chess()
+
+         while (!chess.isGameOver()) {
+            const moves = chess.moves()
+            const move = moves[Math.floor(Math.random() * moves.length)]
+
+            chess.move(move)
+        }
+        console.log(chess.pgn())
+
+        </script>
+    </body>
+</html>

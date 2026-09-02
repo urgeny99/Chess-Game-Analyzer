@@ -10,8 +10,7 @@
         <body>
             <h1>Chess Game Analyzer</h1>
             <p><input type="text" id="pgnInput" placeholder="Paste PGN here"></p>
-            <button type="button"
-            onclick="analyzeChessGame()">
+            <button type="button" id="analyzeButton">
             Analyze chess game.</button>
             <script type="module">
                 import { Chess } from './lib/chess.js';
@@ -19,9 +18,20 @@
                 function analyzeChessGame() {
                     const pgnInput = document.getElementById('pgnInput').value;
                     const chess = new Chess();
-                    chess.load_pgn(pgnInput);
-                    document.getElementById('chessOutput').innerText = 'Game analyzed';
+                    try {
+                        chess.loadPgn(pgnInput);
+                        document.getElementById('chessOutput').innerText = 'Game analyzed';
+                    } catch (error) {
+                        document.getElementById('chessOutput').innerText = 'Unable to analyze game.';
+                    }
                 }
+
+                document.getElementById('analyzeButton').addEventListener('click', analyzeChessGame);
+
+                
+
+
+
             </script>
             <p id="chessOutput"></p>
             
