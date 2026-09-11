@@ -9,22 +9,32 @@
     </head>
         <body>
             <h1>Chess Game Analyzer</h1>
-            <p><input type="text" id="pgnInput" placeholder="Paste PGN here"></p>
-            <button type="button" id="analyzeButton">
+            <p><input type="text" id="chessInput" placeholder="Paste PGN here"></p>
+            <button type="button"
+            onclick="analyzeChessGame()">
             Analyze chess game.</button>
+            
             <script type="module">
                 import { Chess } from './lib/chess.js';
-                
                 function analyzeChessGame() {
-                    const pgn = document.getElementById('pgnInput').value;
-                    
-                    let chess = new Chess();
-
-                    chess.loadPgn(pgn.join('\n'));
-
-                    chess.ascii();
+                    const pgn = document.getElementById('chessInput').value;
+                    const chess = new Chess();
+                    chess.loadPgn(pgn);
+                    document.getElementById('chessOutput').textContent =
+                        'Game over. Result: ' + result + '\n' +
+                        'PGN: ' + chess.pgn();
+                    const headers = chess.getHeaders();
+                    console.log(headers.Result)
+                    console.log(chess.ascii())
                 }
 
+                import { Stockfish } from './lib/stockfish.js';
+                function callstockfish() {
+                    
+                }
+
+                window.analyzeChessGame = analyzeChessGame;
             </script>
+            <p id="chessOutput"></p>
         </body>
-</html>
+    </html>
