@@ -16,24 +16,15 @@
                 import { Chess } from './lib/chess.js';
                 
                 function analyzeChessGame() {
-                    const pgnInput = document.getElementById('pgnInput').value;
-                    const chess = new Chess();
-                    try {
-                        chess.loadPgn(pgnInput);
-                        document.getElementById('chessOutput').innerText = 'Game analyzed';
-                    } catch (error) {
-                        document.getElementById('chessOutput').innerText = 'Unable to analyze game.';
-                    }
+                    const pgn = document.getElementById('pgnInput').value;
+                    
+                    let chess = new Chess();
+
+                    chess.loadPgn(pgn.join('\n'));
+
+                    chess.ascii();
                 }
 
-                document.getElementById('analyzeButton').addEventListener('click', analyzeChessGame);
-
-                
-
-
-
             </script>
-            <p id="chessOutput"></p>
-            
         </body>
-    </html>
+</html>
