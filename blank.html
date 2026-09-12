@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>PGN Stockfish Analysis</title>
+	<style>
+		body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; font: 16px system-ui, sans-serif; }
+		textarea { width: 100%; min-height: 180px; box-sizing: border-box; font: 14px monospace; }
+		button { margin: .5rem .5rem .5rem 0; padding: .55rem .9rem; }
+		pre { background: #111; color: #ddd; padding: 1rem; min-height: 180px; max-height: 420px; overflow: auto; white-space: pre-wrap; }
+		.error { color: #b00020; }
+	</style>
+</head>
+<body>
+	<h1>Stockfish PGN analysis</h1>
+	<p>Engine is loaded from <code>./lib/stockfish.js</code> (asm.js build, single-threaded).</p>
+	<textarea id="pgn" placeholder="Paste a PGN here..."></textarea><br>
+	<label>Depth <input id="depth" type="number" min="1" max="30" value="16"></label>
+	<button id="analyze">Analyze</button>
+	<button id="stop" disabled>Stop</button>
+	<pre id="output">Ready.</pre>
+
+	<script type="module">
+		import { Chess } from './lib/chess.js';
+
+		const output = document.getElementById('output');
+		const analyzeButton = document.getElementById('analyze');
+		const stopButton = document.getElementById('stop');
+		let worker;
+
+		function log(text) {
+			output.textContent += text + '\n';
+			output.scrollTop = output.scrollHeight;
+		}
+
+		function stop() {
+			if (worker) {
+				worker.postMessage('stop');
+				worker.terminate();
+			}
+			worker = null;
+			analyzeButton.disabled = false;
+			stopButton.disabled = true;
+		}
+
+		// "1. e4" for a white move, "1... e5" for a black one.
+		function label(ply, san) {
+			const moveNumber = Math.ceil(ply / 2);
+			return ply % 2 ? `${moveNumber}. ${san}` : `${moveNumber}... ${san}`;
+		}
+
+		// UCI scores are from the side to move's point of view; show everything
+		// from white's, so the numbers are comparable across the whole game.
+		function formatScore(score, sideToMove) {
+			if (!score) return '?';
+			const sign = sideToMove === 'w' ? 1 : -1;
+			if (score.mate !== undefined) {
+				const mate = sign * score.mate;
+				return `#${mate > 0 ? '+' : '-'}${Math.abs(score.mate)}`;
+			}
+			const pawns = (sign * score.cp) / 100;
+			return (pawns > 0 ? '+' : '') + pawns.toFixed(2);
+		}
+
+		function parseScore(line) {
+			const mate = line.match(/ score mate (-?\d+)/);
+			if (mate) return { mate: Number(mate[1]) };
+			const cp = line.match(/ score cp (-?\d+)/);
+			return cp ? { cp: Number(cp[1]) } : null;
+		}
+
+		stopButton.onclick = () => {
+			stop();
+			log('Stopped.');
+		};
+
+		analyzeButton.onclick = () => {
+			stop();
+			output.textContent = '';
+
+			const pgn = document.getElementById('pgn').value.trim();
+			if (!pgn) {
+				output.textContent = 'Paste a PGN first.';
+				return;
+			}
+
+			// chess.js v1 throws on a PGN it cannot parse, it does not return false.
+			const game = new Chess();
+			try {
+				game.loadPgn(pgn);
+			} catch (error) {
+				output.textContent = 'Could not read that PGN: ' + (error.message || error);
+				return;
+			}
+
+			const moves = game.history();
+			if (!moves.length) {
+				output.textContent = 'That PGN has no moves.';
+				return;
+			}
+
+			// Replay the game so every position gets its own FEN to search.
+			const replay = new Chess();
+			const positions = [{ ply: 0, fen: replay.fen(), label: 'start' }];
+			for (const [i, san] of moves.entries()) {
+				try {
+					replay.move(san);
+				} catch (error) {
+					output.textContent = `Illegal move "${san}" at ply ${i + 1}: ` + (error.message || error);
+					return;
+				}
+				// This engine answers "go" on a checkmate/stalemate position with a
+				// bare "info depth 0" and never sends bestmove, so searching one
+				// would stall the whole chain. Flag it and report it directly.
+				let terminal = null;
+				if (replay.isCheckmate()) terminal = 'checkmate';
+				else if (replay.isStalemate()) terminal = 'stalemate';
+				else if (replay.isDraw()) terminal = 'draw';
+				positions.push({ ply: i + 1, fen: replay.fen(), label: label(i + 1, san), terminal });
+			}
+
+			if (location.protocol === 'file:') {
+				output.textContent = 'Run this page from a local web server (not file://). ' +
+					'Web workers and ES modules cannot load from file:// URLs.';
+				return;
+			}
+
+			const stockfishUrl = new URL('./lib/stockfish.js', document.baseURI);
+			try {
+				worker = new Worker(stockfishUrl, { type: 'classic' });
+			} catch (error) {
+				output.textContent = 'Could not start Stockfish from ' + stockfishUrl.href + ': ' +
+					(error.message || error);
+				return;
+			}
+			analyzeButton.disabled = true;
+			stopButton.disabled = false;
+
+			const depth = Math.max(1, Math.min(30, Number(document.getElementById('depth').value) || 16));
+			let positionIndex = 0;
+			let current = null;      // position being searched
+			let deepest = null;      // best "info ... score ..." line seen for it
+			let previousScore = null;
+
+			function analyzeNext() {
+				while (worker) {
+					if (positionIndex >= positions.length) {
+						log('Done.');
+						stop();
+						return;
+					}
+					current = positions[positionIndex++];
+					deepest = null;
+					if (current.terminal) {
+						log(`${current.label.padEnd(12)}  ${current.terminal}`);
+						previousScore = null;
+						continue;
+					}
+					worker.postMessage('position fen ' + current.fen);
+					worker.postMessage('go depth ' + depth);
+					return;
+				}
+			}
+
+			function report(bestmoveLine) {
+				const sideToMove = current.fen.split(' ')[1];
+				const score = deepest && parseScore(deepest);
+				const best = bestmoveLine.split(/\s+/)[1] || '(none)';
+				const parts = [
+					current.label.padEnd(12),
+					'eval ' + formatScore(score, sideToMove).padStart(7),
+				];
+				// Centipawn swing caused by the move that led here, from white's side.
+				if (score && previousScore && score.cp !== undefined && previousScore.cp !== undefined) {
+					const before = previousScore.value;
+					const after = (sideToMove === 'w' ? 1 : -1) * score.cp;
+					const swing = (after - before) / 100;
+					parts.push('swing ' + (swing > 0 ? '+' : '') + swing.toFixed(2));
+				}
+				parts.push('best ' + best);
+				log(parts.join('  '));
+
+				previousScore = score && score.cp !== undefined
+					? { cp: score.cp, value: (sideToMove === 'w' ? 1 : -1) * score.cp }
+					: null;
+			}
+
+			worker.onmessage = e => {
+				const line = String(e.data);
+				if (line === 'uciok') {
+					worker.postMessage('isready');
+					return;
+				}
+				if (line === 'readyok') {
+					log(`Analyzing ${positions.length - 1} moves at depth ${depth}...`);
+					worker.postMessage('ucinewgame');
+					analyzeNext();
+					return;
+				}
+				// Keep only the latest (deepest) scored line for the current search.
+				if (line.startsWith('info') && line.includes(' score ')) {
+					deepest = line;
+					return;
+				}
+				if (line.startsWith('bestmove')) {
+					report(line);
+					analyzeNext();
+				}
+			};
+			worker.onerror = e => {
+				const details = [e.message, e.filename, e.lineno && `line ${e.lineno}`]
+					.filter(Boolean).join(' — ');
+				log('Worker error: ' +
+					(details || `Unable to load ${stockfishUrl.href}. Check that the file is served ` +
+						'over http:// and that the path is correct.'));
+				stop();
+			};
+			worker.onmessageerror = () => {
+				log('Worker message error: Stockfish returned an unreadable message.');
+			};
+
+			// This build caps Threads and Hash at 1 and 16, so there is nothing to tune.
+			worker.postMessage('uci');
+		};
+	</script>
+</body>
+</html>
