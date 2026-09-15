@@ -16,14 +16,14 @@ All analysis happens client-side. Your games and results are never sent to a ser
 
 - Vanilla HTML/CSS/JS — no build step, no framework
 - [chess.js](https://github.com/jhlywa/chess.js) for PGN parsing, move stepping, and FEN generation
-- Stockfish (asm.js build) running in a Web Worker, communicating via the UCI protocol
+- Stockfish (asm.js build) running in a Web Worker, communicating via the UCI protocol (lichess)
 - lichess.org public API for fetching games (planned)
 
 ## Project structure
 
 ```
 chess-analysis/
-├── index.html          # PGN input, parsing, and result/header display
+├── analysis.html          # PGN input, parsing, and result/header display
 ├── bestmove.html        # single-position analysis: FEN → Stockfish best move
 ├── lib/
 │   ├── chess.js
@@ -33,11 +33,9 @@ chess-analysis/
 
 ## Running locally
 
-Since the app uses ES modules (`type="module"`), opening `index.html` directly via `file://` won't work in most browsers. Serve it locally instead, e.g. with `npx serve`, and open the forwarded local URL.
+Since the app uses ES modules (`type="module"`), opening `analysis.html` directly via `file://` won't work in most browsers. Serve it locally instead, e.g. with `npx serve`, and open the forwarded local URL.
 
-## Hosting
 
-Deployed via GitHub Pages — push to `main`, enable Pages in repo settings (source: root of `main`), and the app is live at `https://<username>.github.io/<repo-name>/`.
 
 ## Status
 
