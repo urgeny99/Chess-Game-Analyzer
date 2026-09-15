@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        Chess Game Analyzer
+    </title>
+</head>
+
+<body>
+    <h1>Chess Game Analyzer</h1>
+    <p><input type="text" id="chessInput" placeholder="Paste PGN here"></p>
+    <button type="button" onclick="startWorker(), analyzeChessGame()">
+        Analyze chess game.</button>
+    <label for="depthSlider">Search Depth: <span id="depthValue">18</span></label>
+    <input type="range" id="depthSlider" min="1" max="20" value="18" step="1">
+
+    <script type="module">
+
+        import { Chess } from './lib/chess.js';
+        let w
+
+        function startWorker() {
+            const x = document.getElementById("StockfishResult");
+            if (typeof (Worker) !== "undefined") {
+                if (typeof (w) == "undefined") {
+                    w = new Worker("./lib/Stockfish.js");
+                }
+                w.postMessage("uci");
+                w.postMessage("isready");
+
+                w.postMessage("go depth " + document.getElementById("depthSlider").value);
+
+                w.onmessage = function (event) {
+                    x.innerHTML = event.data;
+                };
+            }
+        }
+
+
+
+
+        function analyzeChessGame() {
+            const pgn = document.getElementById('chessInput').value;
+            const chess = new Chess();
+            chess.loadPgn(pgn);
+
+            const headers = chess.getHeaders();
+            const result = headers.Result;
+
+            document.getElementById('chessOutput').textContent =
+                'Game over. Result: ' + result + '\n' +
+                'PGN: ' + chess.pgn();
+
+            console.log(headers.Result);
+            console.log(chess.ascii());
+        }
+
+
+
+
+        window.analyzeChessGame = analyzeChessGame;
+        window.startWorker = startWorker;
+
+        const depthSlider = document.getElementById('depthSlider');
+        const depthValue = document.getElementById('depthValue');
+        depthSlider.addEventListener('input', () => {
+            depthValue.textContent = depthSlider.value;
+        });
+
+    </script>
+    <p id="chessOutput"></p>
+    <p id="StockfishResult"></p>
+</body>
+
+</html>
